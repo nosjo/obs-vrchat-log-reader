@@ -61,7 +61,7 @@ local function reading()
 				local strend = string.find(entry, ":", nil, true)
 				local id = string.sub(entry, 2, strend - 1)
 				print("World id: " .. id)
-				local handle = io.popen("curl " .. obs.obs_data_get_string(script_settings, "curl_params") .. " -X GET \"https://api.vrchat.cloud/api/1/worlds/wrld_" .. id .. "\" -b \"apiKey=JlE5Jldo5Jibnk5O5hTx6XVqsJu4WJ26\" -A \"Obs-Vrchat-Log-Reader/1.0.1 (Discord: Nosjo, Email: admin@nosjo.xyz)\"")
+				local handle = io.popen("curl " .. obs.obs_data_get_string(script_settings, "curl_params") .. " -X GET \"https://api.vrchat.cloud/api/1/worlds/wrld_" .. id .. "\" -b \"apiKey=JlE5Jldo5Jibnk5O5hTx6XVqsJu4WJ26\" -A \"Obs-Vrchat-Log-Reader/1.0.2 (Discord: Nosjo, Email: admin@nosjo.xyz)\"")
 				local txt = handle:read("*a")
 				print("Raw json: " .. txt)
 				local arr = json.decode(txt)
@@ -129,25 +129,6 @@ function script_properties()
     return props
 end
 
---init
-local function is_frontend_ready()
-	local scene = obs.obs_frontend_get_current_scene()
-	local ready = scene ~= nil
-	obs.obs_source_release(scene)
-	return ready
-end
-
-local function try_first_load()
-	if is_frontend_ready() then
-		obs.timer_remove(try_first_load)
-		init()
-	end
-end
-
-function _G.script_load(settings)
-	if not is_frontend_ready() then
-		obs.timer_add(try_first_load, 1000)
-	else
-		init()
-	end
+function script_load(settings)
+	init()
 end
