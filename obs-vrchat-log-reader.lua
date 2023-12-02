@@ -1,4 +1,4 @@
-local obs = _G.obslua
+local obs = obslua
 local filename = ""
 local dst = "                                                                                                       "
 local closefile = true;
@@ -10,7 +10,7 @@ local script_settings
 local firstrun = true;
 local readytorun = false;
 
-function _G.script_description()
+function script_description()
 	return "Vrchat log reader for getting info on what is going on"
 end
 
