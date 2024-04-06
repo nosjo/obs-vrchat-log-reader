@@ -177,13 +177,13 @@ function script_properties()
 	obs.obs_properties_add_bool(props, "bool_enabled", "Enabled")
 	obs.obs_properties_add_bool(props, "bool_worldna", "Get world name/author")
 	obs.obs_properties_add_text(props, "text_name", "Name of World text:", obs.OBS_TEXT_DEFAULT)
-    obs.obs_properties_add_text(props, "text_author", "Name of Author text:", obs.OBS_TEXT_DEFAULT)
+	obs.obs_properties_add_text(props, "text_author", "Name of Author text:", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_text(props, "image_file", "Name of Image field:", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_text(props, "scene_pre", "Name of Pre scene:", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_text(props, "scene_game", "Name of Game scene:", obs.OBS_TEXT_DEFAULT)
-    obs.obs_properties_add_text(props, "scene_hop", "Name of Hop scene:", obs.OBS_TEXT_DEFAULT)
+	obs.obs_properties_add_text(props, "scene_hop", "Name of Hop scene:", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_text(props, "log_folder", "Vrchat log file folder:", obs.OBS_TEXT_DEFAULT)
-    return props
+	return props
 end
 
 function script_load(settings)
