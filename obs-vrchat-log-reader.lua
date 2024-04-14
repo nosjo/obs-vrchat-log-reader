@@ -130,7 +130,7 @@ local function reading()
 						local source = obs.obs_get_source_by_name(obs.obs_data_get_string(script_settings, "image_file"))
 						if source ~= nil then
 							local settings = obs.obs_data_create()
-							obs.obs_data_set_string(settings, "file", arr.imageUrl)
+							obs.obs_data_set_string(settings, "url", arr.imageUrl)
 							obs.obs_source_update(source, settings)
 							obs.obs_data_release(settings)
 							obs.obs_source_release(source)
