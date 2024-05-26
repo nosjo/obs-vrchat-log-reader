@@ -1,22 +1,26 @@
-local obs = obslua
-local filename = ""
-local dst = "                                                                                                       "
+local obs = obslua;
+local filename = "";
+local dst = "  ;                                                                                                     ";
 local closefile = true;
-local activefile
-local line = 0
-local scenes
-local json = require("json")
-local ffi = require("ffi")
-local curl = require("luajit-curl")
-local script_settings
+local activefile;
+local line = 0;
+local scenes;
+local json = require("json");
+local ffi = require("ffi");
+local curl = require("luajit-curl");
+local script_settings;
 local firstrun = true;
 local readytorun = false;
+local streaming = false;
+local streamstarttime = 0;
+local tempworldsfs;
+local temphistoryfs;
 local errors = {
 	unknown = 0,
 	timeout = 1,
 	connect = 2,
 	resolve_host = 3
-}
+};
 local code_map = {
 	[curl.CURLE_OPERATION_TIMEDOUT] = {
 		errors.timeout, "Connection timed out"
@@ -27,13 +31,38 @@ local code_map = {
 	[curl.CURLE_COULDNT_CONNECT] = {
 		errors.connect, "Couldn't connect to host"
 	}
-}
+};
 
 function script_description()
-	return "Vrchat log reader for getting info on what is going on"
+	return "Vrchat log reader for getting info on what is going on";
+end
+
+local function SecondsToClock(seconds)
+	hours = string.format("%02.f", math.floor(seconds/3600));
+	mins = string.format("%02.f", math.floor(seconds/60 - (hours*60)));
+	secs = string.format("%02.f", math.floor(seconds - hours*3600 - mins *60));
+	if (hours ~= "00") then
+		return hours .. ":" .. mins .. ":" .. secs;
+	else
+		return mins .. ":" .. secs;
+	end
 end
 
 local function reading()
+	--Streaming check since obs_frontend_add_event_callback causes crashes
+	if (not streaming and obs.obs_frontend_streaming_active()) then
+		print("Stream start");
+		streaming = true;
+		streamstarttime = os.time();
+		tempworldsfs = io.open(dst .. "\\obs\\worlds.txt", "w");
+		temphistoryfs = io.open(dst .. "\\obs\\timestamps.txt", "w");
+		temphistoryfs:write("00:00 - Stream Start", "\n");
+	elseif (streaming and not obs.obs_frontend_streaming_active()) then
+		print("Stream stop");
+		streaming = false;
+		io.close(tempworldsfs);
+		io.close(temphistoryfs);
+	end
 	--check if latest file
 	local dir = obs.os_opendir(dst)
 	local entry
@@ -67,16 +96,26 @@ local function reading()
 			line = line + 1
 			if string.find(entry, "[Behaviour] OnLeftRoom", nil, true) then
 				print("left room")
-				local scene = obs.obs_scene_get_source(obs.obs_get_scene_by_name(obs.obs_data_get_string(script_settings, "scene_hop")))
-				if (obs.obs_source_get_name(obs.obs_frontend_get_current_scene()) ~= obs.obs_data_get_string(script_settings, "scene_pre")) then
-					obs.obs_frontend_set_current_scene(scene)
+				local scene = obs.obs_get_scene_by_name(obs.obs_data_get_string(script_settings, "scene_hop"))
+				local source = obs.obs_scene_get_source(scene)
+				local frontscene = obs.obs_frontend_get_current_scene()
+				if (obs.obs_source_get_name(frontscene) ~= obs.obs_data_get_string(script_settings, "scene_pre")) then
+					obs.obs_frontend_set_current_scene(source)
 				end
+				obs.obs_scene_release(scene)
+				obs.obs_source_release(source)
+				obs.obs_source_release(frontscene)
 			elseif string.find(entry, "[Behaviour] Finished entering world.", nil, true) then
 				print("joined room")
-				local scene = obs.obs_scene_get_source(obs.obs_get_scene_by_name(obs.obs_data_get_string(script_settings, "scene_game")))
-				if (obs.obs_source_get_name(obs.obs_frontend_get_current_scene()) ~= obs.obs_data_get_string(script_settings, "scene_pre")) then
-					obs.obs_frontend_set_current_scene(scene)
+				local scene = obs.obs_get_scene_by_name(obs.obs_data_get_string(script_settings, "scene_game"))
+				local source = obs.obs_scene_get_source(scene)
+				local frontscene = obs.obs_frontend_get_current_scene()
+				if (obs.obs_source_get_name(frontscene) ~= obs.obs_data_get_string(script_settings, "scene_pre")) then
+					obs.obs_frontend_set_current_scene(source)
 				end
+				obs.obs_scene_release(scene)
+				obs.obs_source_release(source)
+				obs.obs_source_release(frontscene)
 			elseif string.find(entry, "[Behaviour] Destination set: wrld_", nil, true) and obs.obs_data_get_bool(script_settings, "bool_worldna") then
 				print("Get name and author")
 				local _, strstart = string.find(entry, "[Behaviour] Destination set: wrld_", nil, true)
@@ -135,6 +174,28 @@ local function reading()
 							obs.obs_data_release(settings)
 							obs.obs_source_release(source)
 						end
+						local source = obs.obs_get_source_by_name(obs.obs_data_get_string(script_settings, "qr_image"))
+						if source ~= nil then
+							local settings = obs.obs_data_create()
+							if (arr.releaseStatus == "public") then
+								obs.obs_data_set_string(settings, "url", "https://api.qrserver.com/v1/create-qr-code/?size=450x450&bgcolor=E4E3E4&data=https://vrchat.com/home/launch?worldId=" .. arr.id)
+							else
+								obs.obs_data_set_string(settings, "url", "")
+							end
+							obs.obs_source_update(source, settings)
+							obs.obs_data_release(settings)
+							obs.obs_source_release(source)
+						end
+						if (streaming) then
+							temphistoryfs:write(SecondsToClock(os.time() - streamstarttime) .. " - " .. arr.name .. " by " .. arr.authorName, "\n");
+							if (arr.releaseStatus == "public") then
+								tempworldsfs:write(arr.name .. " by " .. arr.authorName .. " - " .. "https://vrchat.com/home/launch?worldId=" .. arr.id, "\n");
+							else
+								tempworldsfs:write(arr.name .. " by " .. arr.authorName .. " - Private", "\n");
+							end
+							tempworldsfs:flush();
+							temphistoryfs:flush();
+						end
 					end
 				end
 			end
@@ -149,7 +210,7 @@ local function init()
 	obs.os_get_config_path(dst, #dst, "LocalLow\\VRChat\\VRChat")
 	dst = dst:gsub('%Roaming\\', '')
 	dst = dst:gsub('[%c%s]', '')
-	scenes =  obs.obs_frontend_get_scenes()
+	scenes = obs.obs_frontend_get_scenes()
 	if obs.obs_data_get_bool(script_settings, "bool_enabled") then
 		obs.timer_add(reading, 1000)
 	end
@@ -173,19 +234,28 @@ function script_update(settings)
 end
 
 function script_properties()
-    local props = obs.obs_properties_create()
-	obs.obs_properties_add_bool(props, "bool_enabled", "Enabled")
-	obs.obs_properties_add_bool(props, "bool_worldna", "Get world name/author")
-	obs.obs_properties_add_text(props, "text_name", "Name of World text:", obs.OBS_TEXT_DEFAULT)
-	obs.obs_properties_add_text(props, "text_author", "Name of Author text:", obs.OBS_TEXT_DEFAULT)
-	obs.obs_properties_add_text(props, "image_file", "Name of Image field:", obs.OBS_TEXT_DEFAULT)
-	obs.obs_properties_add_text(props, "scene_pre", "Name of Pre scene:", obs.OBS_TEXT_DEFAULT)
-	obs.obs_properties_add_text(props, "scene_game", "Name of Game scene:", obs.OBS_TEXT_DEFAULT)
-	obs.obs_properties_add_text(props, "scene_hop", "Name of Hop scene:", obs.OBS_TEXT_DEFAULT)
-	obs.obs_properties_add_text(props, "log_folder", "Vrchat log file folder:", obs.OBS_TEXT_DEFAULT)
-	return props
+    local props = obs.obs_properties_create();
+	obs.obs_properties_add_bool(props, "bool_enabled", "Enabled");
+	obs.obs_properties_add_bool(props, "bool_worldna", "Get world name/author");
+	obs.obs_properties_add_text(props, "text_name", "Name of World text:", obs.OBS_TEXT_DEFAULT);
+	obs.obs_properties_add_text(props, "text_author", "Name of Author text:", obs.OBS_TEXT_DEFAULT);
+	obs.obs_properties_add_text(props, "image_file", "Name of Image field:", obs.OBS_TEXT_DEFAULT);
+	obs.obs_properties_add_text(props, "qr_image", "Name of QR image field:", obs.OBS_TEXT_DEFAULT);
+	obs.obs_properties_add_text(props, "scene_pre", "Name of Pre scene:", obs.OBS_TEXT_DEFAULT);
+	obs.obs_properties_add_text(props, "scene_game", "Name of Game scene:", obs.OBS_TEXT_DEFAULT);
+	obs.obs_properties_add_text(props, "scene_hop", "Name of Hop scene:", obs.OBS_TEXT_DEFAULT);
+	obs.obs_properties_add_text(props, "log_folder", "Vrchat log file folder:", obs.OBS_TEXT_DEFAULT);
+	return props;
 end
 
 function script_load(settings)
-	init()
+	init();
+end
+
+function script_unload()
+	print("Unload script")
+	if (reading) then
+		obs.timer_remove(reading)
+	end
+	obs.obs_source_release(scenes)
 end
