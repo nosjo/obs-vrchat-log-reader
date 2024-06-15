@@ -135,6 +135,19 @@ local function reading()
 							obs.obs_data_release(settings)
 							obs.obs_source_release(source)
 						end
+						local source = obs.obs_get_source_by_name(obs.obs_data_get_string(script_settings, "qr_image"))
+						if source ~= nil then
+							local settings = obs.obs_data_create()
+							if (arr.releaseStatus == "public") then
+								local size = obs.obs_data_get_string(script_settings, "qr_size")
+								obs.obs_data_set_string(settings, "url", "https://api.qrserver.com/v1/create-qr-code/?size=" .. size .. "x" .. size .. "&bgcolor=E4E3E4&data=https://vrchat.com/home/launch?worldId=" .. arr.id)
+							else
+								obs.obs_data_set_string(settings, "url", "")
+							end
+							obs.obs_source_update(source, settings)
+							obs.obs_data_release(settings)
+							obs.obs_source_release(source)
+						end
 					end
 				end
 			end
@@ -179,6 +192,8 @@ function script_properties()
 	obs.obs_properties_add_text(props, "text_name", "Name of World text:", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_text(props, "text_author", "Name of Author text:", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_text(props, "image_file", "Name of Image field:", obs.OBS_TEXT_DEFAULT)
+	obs.obs_properties_add_text(props, "qr_image", "Name of QR image field:", obs.OBS_TEXT_DEFAULT);
+	obs.obs_properties_add_text(props, "qr_size", "QR image size in pixels:", obs.OBS_TEXT_DEFAULT);
 	obs.obs_properties_add_text(props, "scene_pre", "Name of Pre scene:", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_text(props, "scene_game", "Name of Game scene:", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_text(props, "scene_hop", "Name of Hop scene:", obs.OBS_TEXT_DEFAULT)
