@@ -90,7 +90,7 @@ local function reading()
 				curl.curl_easy_setopt(handle, curl.CURLOPT_SSL_VERIFYPEER, 1)
 				curl.curl_easy_setopt(handle, curl.CURLOPT_SSL_VERIFYHOST, 2)
 				curl.curl_easy_setopt(handle, curl.CURLOPT_HTTPGET, 1)
-				curl.curl_easy_setopt(handle, curl.CURLOPT_USERAGENT, "Obs-Vrchat-Log-Reader/1.0.3 (Discord: Nosjo, Email: admin@nosjo.xyz)")
+				curl.curl_easy_setopt(handle, curl.CURLOPT_USERAGENT, "Obs-Vrchat-Log-Reader/1.0.4 (Discord: Nosjo, Email: admin@nosjo.xyz)")
 				--curl.curl_easy_setopt(handle, curl.CURLOPT_HTTPHEADER, "apiKey:JlE5Jldo5Jibnk5O5hTx6XVqsJu4WJ26")
 				local out_buffer = {}
 				local callback = ffi.cast("curl_callback", function(data, size, nmeb, user)
